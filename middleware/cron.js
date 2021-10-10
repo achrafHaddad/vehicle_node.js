@@ -3,11 +3,13 @@ const CronJob = require("cron").CronJob;
 const nodemailer = require("nodemailer");
 const createError = require("http-errors");
 
+const { AUTH_USERNAME, AUTH_PASSWORD } = process.env;
+
 const transporter = nodemailer.createTransport({
 	service: "gmail",
 	auth: {
-		user: "",
-		pass: "",
+		user: AUTH_USERNAME,
+		pass: AUTH_PASSWORD,
 	},
 	tls: {
 		rejectUnauthorized: false,
@@ -40,7 +42,7 @@ const mailNotif = new CronJob(
 					duration: {
 						$exists: true,
 						$ne: null,
-						$gt: 14,
+						$gte: 14,
 					},
 					send: {
 						$ne: true,
@@ -53,20 +55,20 @@ const mailNotif = new CronJob(
 			for (const user of usersToNotify) {
 				const mailOptions = {
 					to: user.email,
-					from: "",
-					subject: "Absence notification",
+					from: AUTH_USERNAME,
+					subject: `Absence notification-${user._id.toString().slice(0, 7)}`,
 					text: "You are receiving this email because du to your abcense from the application from more than 14 days",
 				};
 
-				// await transporter.sendMail(mailOptions, async (error, info) => {
-				// 	if (error) {
-				// 		console.log("Error occurred");
-				// 		console.log(error.message);
-				// 		return createError.InternalServerError(error.message);
-				// 	}
-				// 	console.log("send");
-				// 	await User.findByIdAndUpdate(user._id, { send: true });
-				// });
+				await transporter.sendMail(mailOptions, async (error, info) => {
+					if (error) {
+						console.log("Error occurred");
+						console.log(error.message);
+						return createError.InternalServerError(error.message);
+					}
+					console.log("send");
+					await User.findByIdAndUpdate(user._id, { send: true });
+				});
 			}
 		}
 	},
