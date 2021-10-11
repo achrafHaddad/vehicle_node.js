@@ -3,6 +3,7 @@ const createError = require("http-errors");
 const fs = require("fs").promises;
 const bcrypt = require("bcrypt");
 const { signAccessToken } = require("../middleware/auth");
+const { newAccountEmail } = require("../middleware/mailer");
 
 exports.register = async (req, res, next) => {
 	try {
@@ -126,7 +127,12 @@ exports.createProfile = async (req, res, next) => {
 		const admin = await User.findById(req.user.id);
 		if (admin.role !== "admin") return next(createError.Unauthorized());
 
-		const password = Math.floor(Math.random() * 1000).toString();
+		let password = "";
+		const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		for (let i = 0; i < 8; i++) {
+			password += possible.charAt(Math.floor(Math.random() * possible.length));
+		}
+
 		const salt = await bcrypt.genSalt(10);
 		const hashPassword = await bcrypt.hash(password, salt);
 
@@ -148,6 +154,7 @@ exports.createProfile = async (req, res, next) => {
 		}
 
 		await user.save();
+		await newAccountEmail(user.email, password);
 
 		res.status(201).send({ message: "user created", user });
 	} catch (error) {
